@@ -1,77 +1,66 @@
 package Calculate
 
+
 import Data.API.ApiInterface
 import Data.CatalogInterface
 import Data.PVOutDC
 import Data.PvOutputsDC
 import Userinterface.UserInputDC
 import kotlin.math.cos
+import kotlin.math.pow
 
 class PvCalculator(
     val apiInterface: ApiInterface,
     val pvCatalog: CatalogInterface
 ) : CalcInterface {
 
+
     override fun calculation(
         ui: UserInputDC,
         moduleName: String
+
     ): PVOutDC {
 
         val modul = pvCatalog.getModule(moduleName)
 
         val apiOutputs = if (ui.useApi) {
             apiInterface.apiCollect(ui)
+
         } else {
             // Werte aus GUI (ui.*)
+            val cloud = ui.cloudCoverPercent ?: 0.0
             val ghi = ui.ghiClear ?: 0.0
-            val dhi = ui.dhiReal ?: 0.0
+
+            //val dni = ui.dniReal ?: 0.0
+            //val dhi = ui.dhiReal ?: 0.0
+
+
             val tAir = ui.tAir ?: 0.0
             val wind = ui.velocity ?: 0.0
-            val dhiClamped = dhi.coerceIn(0.0, ghi)
-            val dni = (ghi - dhiClamped).coerceAtLeast(0.0)
 
-            // ApiOutputDC wiederverwenden (cloudCover wird nicht mehr genutzt)
+            // ApiOutputDC wiederverwenden
+            //in Package Data
             Data.ApiOutputDC(
-                cloudCoverPercent = 0.0,
+                cloudCoverPercent = cloud,
                 ghiClear = ghi,
-                dniReal = dni,     // wird im Manual-Mode aus GHI/DHI abgeleitet
-                dhiReal = dhi,
+                dniReal = 0.0,
+                dhiReal = 0.0,
                 tAir = tAir,
                 velocity = wind,
                 apiHttpResponse = 0 // 0 = manuell
             )
         }
 
-        // Kein Cloud-Faktor mehr
-        val cmf = 1.0
+        val cloud = apiOutputs.cloudCoverPercent
+        val c = (cloud / 100.0).coerceIn(0.0, 1.0)
+        val cmf = 1.0 - 0.75 * c.pow(3.4)
 
-        // Benutzerwerte
+
+        //Benutzerwerte
         val ghiClear = apiOutputs.ghiClear
 
-        // Manual-Mode: User gibt GHI + DHI ein, BHI (= direkter horizontaler Anteil) = GHI - DHI
-        val dniReal: Double   // hier als BHI zu verstehen
-        val dhiReal: Double
-
-        if (!ui.useApi) {
-            val dhiInput = apiOutputs.dhiReal
-
-            // DHI darf nicht negativ sein und nicht größer als GHI
-            val dhiClamped = dhiInput.coerceIn(0.0, ghiClear)
-
-            // Direkter horizontaler Anteil aus Bilanz
-            val bhiAuto = (ghiClear - dhiClamped).coerceAtLeast(0.0)
-
-            dhiReal = dhiClamped
-            dniReal = bhiAuto
-        } else {
-            // API-Mode: nutze Werte wie geliefert
-            dniReal = apiOutputs.dniReal
-            dhiReal = apiOutputs.dhiReal
-        }
-
-        // effektive Werte (cmf=1)
+        // effektive Werte mit Bewölkung
         val ghiEff = ghiClear * cmf
-
         if (ghiEff <= 0.0) {
             return PVOutDC(
                 apiOut = apiOutputs,
@@ -90,21 +79,46 @@ class PvCalculator(
             )
         }
 
+        //Manual-Mode: nur DNI manuell, DHI = GHI - DNI (clamped)
+        val dniReal: Double
+        val dhiReal: Double
+
+        if (ui.useApi) {
+            // API-Modus: Werte wie geliefert
+            dniReal = apiOutputs.dniReal
+            dhiReal = apiOutputs.dhiReal
+        } else {
+            // Manuell-Modus: aus Bewölkungskategorie (C%) feste Direkt/Diffus-Anteile ableiten
+            val (dniFrac, dhiFrac) = when (cloud) {
+                0.0 -> Pair(0.85, 0.15)     // Klar Frac for fraction
+                25.0 -> Pair(0.75,0.25)    // Leicht bewölkt
+                50.0 -> Pair(0.55, 0.45)    // Teilweise bewölkt
+                75.0 -> Pair(0.30, 0.70)    // Stark bewölkt
+                100.0 -> Pair(0.10, 0.90)   // Bedeckt
+                else -> Pair(0.55, 0.45)    // Default
+            }
+
+            dniReal = ghiClear * dniFrac
+            dhiReal = (ghiClear - dniReal).coerceAtLeast(0.0)
+
+            apiOutputs.dniReal = dniReal
+            apiOutputs.dhiReal = dhiReal
+            //C werte = 0 -> Bei Klarenhimmel DNI Werte hoch - Direktstrahl , wenige DHI diffuse strahl
+        }
+
         // Anteile (für Output / Debug)
-        val fdir = if (ghiClear > 0.0) dniReal / ghiClear else 0.0
-        val fdif = if (ghiClear > 0.0) dhiReal / ghiClear else 0.0
+        val fdir = dniReal / ghiClear
+        val fdif = dhiReal / ghiClear
 
-        // Bei cmf=1 sind die effektiven Werte identisch zu den "realen"
-        val dniEff = dniReal * cmf
-        val dhiEff = dhiReal * cmf
+        val dniEff = fdir * ghiEff
+        val dhiEff = fdif * ghiEff
 
-        // G_beta (gleiches vereinfachtes Modell wie bei dir)
+
+        // G_beta
         val betaRad = Math.toRadians(ui.beta)
-
-        val cosB = cos(betaRad)
-        val skyFactor = (1.0 + cosB) / 2.0
-
-        val gBeta = dniEff * cosB + dhiEff * skyFactor
+//        val gBeta = dhiEff + dniEff * cos(betaRad) --> Diffuse mit maximale werte
+        val diffuseTilt = dhiEff * (1.0 + cos(betaRad)) / 2.0 //--> Reduzierung der isotropes Diffusmodell
+        val gBeta = diffuseTilt + dniEff * cos(betaRad)
 
         // T_cell
         val tCell0 = apiOutputs.tAir + gBeta / 800.0 * (modul.noct - 20.0)
@@ -117,6 +131,7 @@ class PvCalculator(
         val rawLeistung = gBeta * ui.flaeche * eta
         val leistung = if (rawLeistung > 0.0) rawLeistung else null
 
+        // alles in API.PvOutputs zurück informieren
         return PVOutDC(
             apiOut = apiOutputs,
             pvOut = PvOutputsDC(
