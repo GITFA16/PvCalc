@@ -1,6 +1,8 @@
 package Data.API
 
+import Data.ApiOutputDC
 import Userinterface.UserInputDC
+import javafx.beans.binding.When
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
@@ -19,12 +21,13 @@ import java.time.ZoneId
         var apiUrlIrradiance = ""
 
 
-        //Objects Data-Collect Bereich
-        private var http = Http(apiUrl)  //Object http from Class API.Http
+        //Object http from Class API.Http
+        private var http = Http(apiUrl)
 
         //Objects Data-Filter Bereich
-        private val filterApi = ApiFilter(apiWeatherData)
+        private val filterApi = FilterApi(apiWeatherData)
         private val apioutputs = ApiOutputDC(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0)
+
 
 
 
@@ -33,22 +36,22 @@ import java.time.ZoneId
 
             apiUrlZip = ("https://api.openweathermap.org/geo/1.0/zip?zip=" + ui.zip.toString() + ",CH&appid=" + ui.appId) //https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude={part}&appid={API key}"
             http.apiUrl = apiUrlZip
-            println(apiUrlZip) //("${http.apiUrl}")
+            println(apiUrlZip)
             http.get()
             httpZipResponse = http.response.data
             apioutputs.apiHttpResponse = http.response.code
             println(httpZipResponse)
 
 
-            //nominatim.openstreetmap.org/search?postalcode=5225&format=json
+            if (!isHttpOk(http.response.code)) {
+                return apioutputs   //  sofortiger Abbruch
+            }
 
 
             lon = extractLon(httpZipResponse) ?: "0.0"
             lat = extractLat(httpZipResponse) ?: "0.0"
             println("lAT: " + lat + "  LON: " + lon)
 
-
-            // "api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation&start_date=2025-12-17&end_date=2025-12-17&timezone=Europe/Zurich"
 
             val SWISS_ZONE = ZoneId.of("Europe/Zurich")
             val today = LocalDate.now(SWISS_ZONE).toString() // YYYY-MM-DD
@@ -59,7 +62,7 @@ import java.time.ZoneId
 
 
             apiUrlIrradiance = ("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation,cloud_cover,temperature_2m,wind_speed_10m&start_date=" + today + "&end_date=" + today + "&timezone=" + timezoneEncoded)
-            println(apiUrlIrradiance) //("${http.apiUrl}")
+            println(apiUrlIrradiance)
             http.apiUrl = apiUrlIrradiance
             http.get()
             apiSolarIrradiation = http.response.data
@@ -67,19 +70,14 @@ import java.time.ZoneId
             println(apiSolarIrradiation)
 
 
-        when {
-            http.response.code == 200 -> {
-                filter()
-                println("Response OK")
+            if (!isHttpOk(http.response.code)) {
+                return apioutputs    //  sofortiger Abbruch
             }
-            http.response.code == 404 -> {
-                println("Response Invalid")
-            }
+
+            filter()
+
+            return apioutputs
         }
-
-
-        return apioutputs
-    }
 
 
 
@@ -108,10 +106,27 @@ import java.time.ZoneId
         apioutputs.cloudCoverPercent = filterApi.filterOpenMeteo("cloud_cover") //
         apioutputs.tAir= filterApi.filterOpenMeteo("temperature_2m") //
         apioutputs.velocity= filterApi.filterOpenMeteo("wind_speed_10m") //
-
         println(apioutputs)
     }
 
 
+
+
+        private fun isHttpOk(responseCode: Int): Boolean {
+            return when (responseCode) {
+                200 -> {
+                    println("Response OK")
+                    true
+                }
+                404 -> {
+                    println("Response Invalid (404)")
+                    false
+                }
+                else -> {
+                    println("Response Error: $responseCode")
+                    false
+                }
+            }
+        }
 
 }

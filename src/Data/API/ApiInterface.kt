@@ -1,6 +1,6 @@
 package Data.API
 
-import Data.API.ApiOutputDC
+import Data.ApiOutputDC
 import Userinterface.UserInputDC
 
 interface ApiInterface {

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/FASemesterArbeit.iml" filepath="$PROJECT_DIR$/FASemesterArbeit.iml" />
+      <module fileurl="file://$PROJECT_DIR$/PV_Calculation.iml" filepath="$PROJECT_DIR$/PV_Calculation.iml" />
       <module fileurl="file://$PROJECT_DIR$/doc/doc.iml" filepath="$PROJECT_DIR$/doc/doc.iml" />
     </modules>
   </component>
