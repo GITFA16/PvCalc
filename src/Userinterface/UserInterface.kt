@@ -91,7 +91,8 @@ class UserInterface : Application() {
         )
 
         val ghi   = userInput.cbGhi.value   ?: 450.0
-        val dhi = userInput.cbDhi.value ?: 250.0
+//        val dni   = userInput.cbCloud.value   ?: 400.0
+        val cloud = userInput.cbCloud.value ?: 50.0
         val tAir  = userInput.cbTAir.value  ?: 10.0
         val wind  = userInput.cbWind.value  ?: 3.5
 
@@ -99,10 +100,10 @@ class UserInterface : Application() {
         // Werte ins UserInputDC schreiben (nur manuell)
         if (!useApi) {
             ui.ghiClear = ghi
-            ui.dhiReal = dhi
+//            ui.dniReal = dni
+            ui.cloudCoverPercent = cloud
             ui.tAir = tAir
             ui.velocity = wind
-
         }
 
         thread(isDaemon = true) {
@@ -148,7 +149,6 @@ class UserInterface : Application() {
                                 Cloud Cover: ${"%.1f".format(pvOutData.apiOut.cloudCoverPercent)} %
                                 GHI: ${"%.3f".format(pvOutData.apiOut.ghiClear)} W/m²
                                 DNI: ${"%.3f".format(pvOutData.apiOut.dniReal)} W/m²
-                                DHI: ${"%.3f".format(pvOutData.apiOut.dhiReal)} W/m²
                                 T_air: ${"%.2f".format(pvOutData.apiOut.tAir)} °C
                                 Wind: ${"%.2f".format(pvOutData.apiOut.velocity)} m/s
                             """.trimIndent()

@@ -30,7 +30,7 @@ class UserInput(moduleNames: List<String>) : HBox(80.0) {
 
     // Manuelle Eingaben
     val cbGhi = ComboBox<Double>()  // W/m²
-    val cbDhi   = ComboBox<Double>() // W/m²
+    val cbCloud = ComboBox<Double>()  // W/m²
     val cbTAir = ComboBox<Double>() // °C
     val cbWind = ComboBox<Double>() // m/s
 
@@ -93,7 +93,7 @@ class UserInput(moduleNames: List<String>) : HBox(80.0) {
 
         // 2) ComboBox-Layout (Breiten)
         val comboWidth = 200.0
-        listOf(cbGhi, cbDhi, cbTAir, cbWind).forEach {
+        listOf(cbGhi, cbCloud, cbTAir, cbWind).forEach {
             it.prefWidth = comboWidth
         }
 
@@ -112,8 +112,8 @@ class UserInput(moduleNames: List<String>) : HBox(80.0) {
         val rightBox = VBox(14.0).apply {
             children.addAll(
                 Label("Wert-Eingabe (Ohne API)"),
-                Label("Sonnenstärke (GHI,W/m2)"), cbGhi,           // GHI_clear (W/m²) Global Hor. Irra.
-                Label("Gestreutes Licht (DHI,W/m2)"), cbDhi, //DHI_real (W/m²) Diffuse Hor. Irra
+                Label("Sonnenstärke "), cbGhi,           // GHI_clear (W/m²) Global Hor. Irra.
+                Label("Bewölkung "), cbCloud,    // Cloud Bewölkung
                 Label("Außentemperatur (°C)"), cbTAir,       // T_air (°C)
                 Label("Windstärke (m/s)"), cbWind            // Wind (m/s)
             )
@@ -121,11 +121,9 @@ class UserInput(moduleNames: List<String>) : HBox(80.0) {
 
         children.addAll(leftBox, rightBox)
 
-
         // 4) PV Modul Auswahl
         cbModul.items.addAll(moduleNames)
         cbModul.selectionModel.selectFirst()
-
 
         // 5) GHI Setup
         cbGhi.items.addAll(
@@ -154,48 +152,44 @@ class UserInput(moduleNames: List<String>) : HBox(80.0) {
         })
 
 
-
-
-        cbDhi.items.addAll(
-            80.0,
-            120.0,
-            160.0,
-            200.0,
-            240.0,
-            280.0
+        // 6) Bewölkung C in % (Double Werte, Anzeige Text)
+        cbCloud.items.addAll(
+            0.0,     // Klar Frac for fraction
+                        25.0,    // Leicht bewölkt
+                        50.0,    // Teilweise bewölkt
+                        75.0,    // Stark bewölkt
+                        100.0    // Bedeckt
         )
 
-        cbDhi.selectionModel.select(160.0)
-        cbDhi.setConverter(object : StringConverter<Double>() {
+        cbCloud.selectionModel.select(25.0)
+        cbCloud.setConverter(object : StringConverter<Double>() {
             override fun toString(value: Double?): String = when (value) {
-                80.0  -> "Sehr wenig gestreutes Licht"
-                120.0 -> "Wenig gestreutes Licht"
-                160.0 -> "Mittleres gestreutes Licht"
-                200.0 -> "Viel gestreutes Licht"
-                240.0 -> "Sehr viel gestreutes Licht"
-                280.0 -> "Extrem viel gestreutes Licht"
+                0.0  -> "Klar"
+                25.0 -> "Leicht bewölkt"
+                50.0 -> "Teilweise bewölkt"
+                75.0 -> "Stark bewölkt"
+                100.0-> "Bedeckt"
                 else -> ""
             }
-            override fun fromString(string: String?) = 250.0
+            override fun fromString(string: String?) = 350.0
         })
-
-
-
 
 
         // 7) Temperatur Setup
         cbTAir.items.addAll(
             0.0,
-            10.0,
-            25.0
+            23.0,
+            28.0,
+            32.0
         )
 
-        cbTAir.selectionModel.select(10.0)
+        cbTAir.selectionModel.select(23.0)
         cbTAir.setConverter(object : StringConverter<Double>() {
             override fun toString(value: Double?): String = when (value) {
-                0.0 -> "Winter"
-                10.0 -> "Übergang"
-                25.0 -> "Sommer"
+                0.0 -> "Kalt"
+                23.0 -> "Angenehm"
+                28.0 -> "Heiss"
+                32.0 -> "Sehr heiss"
                 else -> ""
             }
             override fun fromString(string: String?) = 25.0
@@ -232,7 +226,7 @@ class UserInput(moduleNames: List<String>) : HBox(80.0) {
 
     fun setManual(manual: Boolean) {
         cbGhi.isDisable = !manual
-        cbDhi.isDisable = !manual
+        cbCloud.isDisable = !manual
         cbTAir.isDisable = !manual
         cbWind.isDisable = !manual
         tfZip.isDisable = manual

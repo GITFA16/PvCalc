@@ -8,7 +8,7 @@ data class UserInputDC (
     var pvModul : Int,
     var useApi: Boolean = true,
 
-    //Manuelle Eingaben (nur relevant, wenn useApi=false)
+
     var cloudCoverPercent: Double? = 0.00, // C [%]
     var ghiClear: Double? = 0.0,          // GHI_clear [W/m²]
     var dniReal: Double? = 0.0,           // DNI [W/m²] Direct Normal Irradiance
