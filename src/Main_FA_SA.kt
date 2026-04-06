@@ -1,10 +1,8 @@
+import javafx.application.Application
+
 fun main () {
 
-
-
-
     val myAppId = "937bd0a5e1d6dfe38866bc7014b69d9e"
-
     println("Berechnung der PV-Leistung")
 
     println("Dachneigung β in grad (°) eingeben:")
@@ -16,7 +14,6 @@ fun main () {
 
     println("Bitte geben Sie Ihre PLZ ein: ")
     var zip = readln().toInt()
-
 
 
     println("Wählen Sie ein PV-Modul:")
@@ -45,44 +42,7 @@ fun main () {
     println("Sie haben " + modul.name+ "ausgewählt")
 
 
-
-
-/*
-
-
-    class Userinterface(
-        private val calculator: CalcInterface
-    ) {
-        var zip: String = ""
-        var myAppId: String = ""
-        var beta: Double = 30.0
-        var flaeche: Double = 10.0
-        var auswahl: String = ""
-        lateinit var modul: PvBase
-
-        fun getoutputData(): PVOutData {
-            val userInputs = UserInputDataClass(
-                zip = zip,
-                appId = myAppId,
-                beta = beta,
-                flaeche = flaeche,
-                pvModul = auswahl
-            )
-
-            return calculator.berechnen(
-                ui = userInputs,
-                modul = modul
-            )
-        }
-    }
-
-
-*/
-
-
-
-
-    //Dies soll dannn die Klasse User Interface mal vorübergehend ersetzten
+        //Dies soll dannn die Klasse User Interface mal vorübergehend ersetzten
         fun ui ( calculator: CalcInterface): PVOutData {
             val userInputs = UserInputDataClass(
                 zip = zip,
@@ -131,8 +91,7 @@ fun main () {
 
         }*/
 
-
-
+    Application.launch(Gui::class.java)
 }
 
 

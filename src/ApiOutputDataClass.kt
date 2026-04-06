@@ -5,4 +5,7 @@ data class ApiOutputDataClass (
     var dhiReal : Double,
     var tAir : Double,
     var v : Double
+
+
+
 )

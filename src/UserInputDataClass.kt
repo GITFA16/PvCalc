@@ -6,3 +6,9 @@ data class UserInputDataClass (
     var pvModul : Int
     )
 
+/*
+A 	        Modulfläche	m²
+β	        Beta Dachneigung	° (Grad)
+v	        Windgeschwindigkeit	m/s
+P 	        PV-Leistung	W (Watt)
+*/
