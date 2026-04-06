@@ -5,6 +5,5 @@ data class PvBaseDC(
     val noct: Double,
     val etaRef: Double,
     val gamma: Double,
-    val neuerparameter: Int? = null
 )
 

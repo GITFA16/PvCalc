@@ -2,7 +2,6 @@ package Data.API
 
 import Data.ApiOutputDC
 import Userinterface.UserInputDC
-import javafx.beans.binding.When
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
@@ -13,12 +12,12 @@ import java.time.ZoneId
         // Deklarationen Data-Collect Bereich
         var httpZipResponse = ""
         var apiWeatherData = ""
-        var apiSolarIrradiation = ""
+        var rawWeatherdata = ""
         var lon = ""
         var lat = ""
         var apiUrl = ""
         var apiUrlZip = ""
-        var apiUrlIrradiance = ""
+        var apiUrlWeatherData = ""
 
 
         //Object http from Class API.Http
@@ -32,7 +31,6 @@ import java.time.ZoneId
 
 
         override fun apiCollect(ui: UserInputDC): ApiOutputDC {
-
 
             apiUrlZip = ("https://api.openweathermap.org/geo/1.0/zip?zip=" + ui.zip.toString() + ",CH&appid=" + ui.appId) //https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude={part}&appid={API key}"
             http.apiUrl = apiUrlZip
@@ -61,13 +59,14 @@ import java.time.ZoneId
             )
 
 
-            apiUrlIrradiance = ("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation,cloud_cover,temperature_2m,wind_speed_10m&start_date=" + today + "&end_date=" + today + "&timezone=" + timezoneEncoded)
-            println(apiUrlIrradiance)
-            http.apiUrl = apiUrlIrradiance
+            // apiUrlWeatherData = ("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation,cloud_cover,temperature_2m,wind_speed_10m&start_date=" + today + "&end_date=" + today + "&timezone=" + timezoneEncoded)
+            apiUrlWeatherData = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current=shortwave_radiation,direct_normal_irradiance,diffuse_radiation,cloud_cover,temperature_2m,wind_speed_10m&timezone="+timezoneEncoded
+            println(apiUrlWeatherData)
+            http.apiUrl = apiUrlWeatherData
             http.get()
-            apiSolarIrradiation = http.response.data
+            rawWeatherdata = http.response.data
             apioutputs.apiHttpResponse = http.response.code
-            println(apiSolarIrradiation)
+            println(rawWeatherdata)
 
 
             if (!isHttpOk(http.response.code)) {
@@ -99,7 +98,7 @@ import java.time.ZoneId
 
 
     fun filter() {
-        filterApi.rawIrradiance = apiSolarIrradiation
+        filterApi.rawWeatherData = rawWeatherdata
         apioutputs.ghiClear = filterApi.filterOpenMeteo("shortwave_radiation") // G(h) / GHI
         apioutputs.dniReal = filterApi.filterOpenMeteo("direct_normal_irradiance") // Gb(n) / DNI
         apioutputs.dhiReal = filterApi.filterOpenMeteo("diffuse_radiation") // Gd(h) / DHI

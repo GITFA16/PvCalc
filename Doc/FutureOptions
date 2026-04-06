@@ -1,0 +1,169 @@
+
+
+Summary:
+
+Die dargestellten Code-Abschnitte wurden im beschriebenen Projektkontext getestet und haben in dieser spezifischen Implementierung funktionsfähig gearbeitet. Eine direkte Übernahme in andere Projekte oder Systemumgebungen ist jedoch nicht ohne weitere Prüfung empfohlen.
+
+Vor einer produktiven Verwendung ist zwingend eine eigenständige Funktions- und Integrationsprüfung durchzuführen. Abweichungen in Systemumgebung, Abhängigkeiten, Konfiguration oder Architektur können das Verhalten beeinflussen.
+
+Für die Richtigkeit, Vollständigkeit oder Übertragbarkeit der beschriebenen Anwendung im Rahmen der vorliegenden Anleitung wird keine Gewähr übernommen. Insbesondere besteht keine Garantie für die Eignung zur Verwendung im Kontext einer Prüfungskommission oder für andere Bewertungszwecke.
+
+
+
+Option1:Alternativen Open-Meteo Call mit Tagswerten
+Option2: Alternativen Filter für im Falle mit tests von Openweathermap
+
+
+
+Start Option1:
+
+        //18.2.2026: Für die Erweiterung und Ergänzungen des API Kollektors auf Tagesbasiert Datensätze welche
+        //auf Stundenauflösung Aktuelle Werte zurückliefen, (Geeignet für einzelne Tagesverläufe)
+        //Können die folgenden 3 Abhängigen Methoden verwendet werden:
+
+            1. filterOpenMeteo
+            2. parseDoubleLis
+            3. valueAtCurrentSwissHour
+
+
+        //Weiter muss beachtet werden, dass der API Request -String mit folgendem ersetzte werden muss:
+        apiUrlWeatherData = ("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation,cloud_cover,temperature_2m,wind_speed_10m&start_date=" + today + "&end_date=" + today + "&timezone=" + timezoneEncoded)
+
+
+
+            fun filterOpenMeteo(fieldName: String): Double {
+                // 1) Find the "hourly" object start
+                val hourlyKey = "\"hourly\":"
+                val hourlyKeyIndex = rawIrradiance.indexOf(hourlyKey)
+                if (hourlyKeyIndex == -1) error("hourly object not found")
+
+                val hourlyObjStart = rawIrradiance.indexOf('{', hourlyKeyIndex)
+                if (hourlyObjStart == -1) error("hourly object start '{' not found")
+
+                // 2) Find the matching closing brace '}' for the hourly object
+                var braceCount = 0
+                var hourlyObjEnd = -1
+
+                for (i in hourlyObjStart until rawIrradiance.length) {
+                    when (rawIrradiance[i]) {
+                        '{' -> braceCount++
+                        '}' -> {
+                            braceCount--
+                            if (braceCount == 0) {
+                                hourlyObjEnd = i
+                                break
+                            }
+                        }
+                    }
+                }
+
+                if (hourlyObjEnd == -1) error("hourly object end '}' not found")
+
+                // Create a substring containing only the hourly object
+                // to avoid matching hourly_units keys
+                val hourlyBlock = rawIrradiance.substring(
+                    hourlyObjStart,
+                    hourlyObjEnd + 1
+                )
+
+                // 3) Find the requested field inside the hourly block
+                val key = "\"$fieldName\""
+                val keyIndex = hourlyBlock.indexOf(key)
+                if (keyIndex == -1) error("$fieldName not found inside hourly object")
+
+                // 4) Extract the [ ... ] array after that key
+                val arrayStart = hourlyBlock.indexOf('[', keyIndex)
+                if (arrayStart == -1) error("Array start '[' for $fieldName not found")
+
+                val arrayEnd = hourlyBlock.indexOf(']', arrayStart)
+                if (arrayEnd == -1) error("Array end ']' for $fieldName not found")
+
+                val content = hourlyBlock
+                    .substring(arrayStart + 1, arrayEnd)
+                    .trim()
+
+                // 5) Parse doubles (simple, basic syntax)
+                // return content.split(',').map { it.trim().toDouble() }
+
+                val list = parseDoubleList(content)
+                val value = valueAtCurrentSwissHour(list)
+
+                return value
+            }
+
+            // Convert from a string of values (0…23h) into a list of doubles
+            fun parseDoubleList(content: String): List<Double> {
+                val parts = content.split(',')
+
+                val result = mutableListOf<Double>()
+                for (part in parts) {
+                    val trimmed = part.trim()
+                    val value = trimmed.toDouble()
+                    result.add(value)
+                }
+
+                return result
+            }
+
+            // Take the current Swiss hour as index and return the value
+            fun valueAtCurrentSwissHour(values: List<Double>): Double {
+                val swissZone = ZoneId.of("Europe/Zurich")
+                val hour = ZonedDateTime.now(swissZone).hour
+
+                require(values.size > hour) {
+                    "Expected at least ${hour + 1} values, got ${values.size}"
+                }
+
+                return values[hour]
+
+           }
+
+ENDE Option1
+
+
+
+
+
+Start Option2:
+
+/*
+        //18.2.2026: Diese Funktion dient als Filter für die Antwort des allgemeinen Datenaufrufs von openweather.org., falls der Dienst gewechselt wird. Dabei müssen die unter Option1 Beschriebene Methoden deaktiviert werden!
+       // ES muss beachtet werden, dass in der Klasse API-Collect folgender Beispiel-API Call ersetzt werden soll:
+       https://api.open-meteo.com/v1/forecast?latitude=47.3769&longitude=8.5417&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation&start_date=2025-12-17&end_date=2025-12-17&timezone=Europe/Zurich
+
+
+        fun filterOpenweathermap (key: String): Double? {
+
+            val allowDecimalComma: Boolean = true
+            val lkey = "\"$key\""
+            val iKey = rawWeather.indexOf(lkey)
+            if (iKey < 0) return null
+
+            var i = iKey + lkey.length
+
+            // Skip whitespace until ':'
+            while (i < rawWeather.length && rawWeather[i].isWhitespace()) i++
+            if (i >= rawWeather.length || rawWeather[i] != ':') return null
+
+
+            // Skip whitespace before the value
+            while (i < rawWeather.length && rawWeather[i].isWhitespace()) i++
+
+            // Optional quotes around value
+            val quoted = i < rawWeather.length && rawWeather[i] == '"'
+            if (quoted) i++
+
+            val start = i
+            while (i < rawWeather.length) {
+                val c = rawWeather[i]
+                if (!(c.isDigit() || c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E')) break
+                i++
+            }
+            if (i == start) return null
+
+            val s = rawWeather.substring(start, i)
+            return s.toDoubleOrNull()
+        }
+*/
+
+ENDE Option 2
