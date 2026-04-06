@@ -1,0 +1,35 @@
+
+
+shortwave_radiation	Global horizontal irradiance	G(h) / GHI
+direct_normal_irradiance	Direct normal irradiance	Gb(n) / DNI
+diffuse_radiation	Diffuse horizontal irradiance	Gd(h) / DHI
+
+
+Example API CAll:
+
+https://api.open-meteo.com/v1/forecast?
+latitude=47.3769
+&longitude=8.5417
+&hourly=shortwave_radiation,direct_normal_irradiance,diffuse_radiation
+&start_date=2025-12-17
+&end_date=2025-12-17
+&timezone=Europe/Zurich
+
+
+
+Interpretation for 10:00–11:00:
+
+G(h) = 210.3 Wh/m²
+
+Gb(n) = 150.7 Wh/m²
+
+Gd(h) = 59.6 Wh/m²
+
+{"latitude":47.38,"longitude":8.539999,"generationtime_ms":0.05328655242919922,"utc_offset_seconds":3600,"timezone":"Europe/Zurich","timezone_abbreviation":"GMT+1","elevation":409.0,
+"hourly_units":{"time":"iso8601","shortwave_radiation":"W/m²","direct_normal_irradiance":"W/m²","diffuse_radiation":"W/m²"},"hourly":
+{"time":["2025-12-17T00:00","2025-12-17T01:00","2025-12-17T02:00","2025-12-17T03:00","2025-12-17T04:00","2025-12-17T05:00","2025-12-17T06:00","2025-12-17T07:00","2025-12-17T08:00","2025-12-17T09:00","2025-12-17T10:00","2025-12-17T11:00",
+"2025-12-17T12:00","2025-12-17T13:00","2025-12-17T14:00","2025-12-17T15:00","2025-12-17T16:00","2025-12-17T17:00","2025-12-17T18:00","2025-12-17T19:00","2025-12-17T20:00","2025-12-17T21:00","2025-12-17T22:00","2025-12-17T23:00"],
+
+"shortwave_radiation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,14.2,66.5,149.8,210.0,226.0,197.0,119.5,62.2,6.5,0.0,0.0,0.0,0.0,0.0,0.0],
+"direct_normal_irradiance":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.7,40.2,157.5,273.0,311.3,260.0,109.0,66.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],
+"diffuse_radiation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,13.8,60.0,109.5,124.8,124.0,118.8,94.0,53.5,6.5,0.0,0.0,0.0,0.0,0.0,0.0]}}

@@ -1,0 +1,53 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+class PvInputs {
+ +cloudCoverPercent : Double,
+ +ghiKlar : Double,
+ +dniReal : Double,
+ +dhiReal : Double,
+ +tAir : Double,
+ +v : Double?
+}
+
+
+class UserAngabe {
+ +beta : Double,
+ +flaeche: Double,
+}
+
+class PvOutputs {
+ +cmf: Double
+ +ghiEff: Double
+ +fdir: Double
+ +fdif: Double
+ +dniEff: Double
+ +dhiEff: Double
+ +gBeta: Double
+ +tCell: Double
+ +eta: Double
+ +leistung: Double
+}
+
+ PvInputs --> PvOutputs
+ UserAngabe --> PvOutputs
+ PvModul --> PvOutputs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@enduml
