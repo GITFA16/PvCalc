@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="PvAPI_1.8_MD:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/PvAPI_1_8_MD_jar</output-path>
+    <root id="archive" name="PvAPI_1.8_MD.jar">
+      <element id="module-output" name="FASemesterArbeit" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/2.2.20/kotlin-stdlib-2.2.20.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

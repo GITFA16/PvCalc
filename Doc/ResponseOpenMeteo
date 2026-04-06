@@ -5,7 +5,7 @@ direct_normal_irradiance	Direct normal irradiance	Gb(n) / DNI
 diffuse_radiation	Diffuse horizontal irradiance	Gd(h) / DHI
 
 
-Example API CAll:
+Example Data CAll:
 
 https://api.open-meteo.com/v1/forecast?
 latitude=47.3769

@@ -1,0 +1,107 @@
+/*PvModels.kt
+Basismodell: beschreibt das PV-Modul selbst
+
+data class Data.PvBase(
+    val name: String,
+    val noct: Double,
+    val etaRef: Double,
+    val gamma: Double
+)
+
+Erweiterung: zusätzliche Infos, nicht jedes Modul braucht sie
+
+data class PvExtended(
+    val base: Data.PvBase,
+    val neuerParameter: Int
+)*/
+
+/*object Data.PvCatalog {
+
+    val Trina_Vertex_S_400 = PvExtended(
+        base = Data.PvBase(
+            name = "Trina Vertex S 400",
+            noct = 43.0,
+            etaRef = 0.208,
+            gamma = -0.0034
+        ),
+        neuerParameter = 20
+    )
+
+    val JaSolar_400 = Data.PvBase(
+        name = "JA Solar JAM72S10 400",
+        noct = 45.0,
+        etaRef = 0.200,
+        gamma = -0.0035
+    )
+
+    val longi_410 = Data.PvBase(
+        name = "LONGi Hi-MO 5m 410",
+        noct = 45.0,
+        etaRef = 0.210,
+        gamma = -0.0034
+    )
+}*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+        //This Function Acts as a Filter for the Response of the general Data Call of the openewather.org
+        //https://api.openweathermap.org/data/2.5/weather?lat=47.4891&lon=8.145&exclude=minutely,hourly,daily&appid=937bd0a5e1d6dfe38866bc7014b69d9e
+
+
+        fun filterOpenweathermap (key: String): Double? {
+
+            val allowDecimalComma: Boolean = true
+            val lkey = "\"$key\""
+            val iKey = rawWeather.indexOf(lkey)
+            if (iKey < 0) return null
+
+            var i = iKey + lkey.length
+
+            // Skip whitespace until ':'
+            while (i < rawWeather.length && rawWeather[i].isWhitespace()) i++
+            if (i >= rawWeather.length || rawWeather[i] != ':') return null
+
+
+            // Skip whitespace before the value
+            while (i < rawWeather.length && rawWeather[i].isWhitespace()) i++
+
+            // Optional quotes around value
+            val quoted = i < rawWeather.length && rawWeather[i] == '"'
+            if (quoted) i++
+
+            val start = i
+            while (i < rawWeather.length) {
+                val c = rawWeather[i]
+                if (!(c.isDigit() || c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E')) break
+                i++
+            }
+            if (i == start) return null
+
+            val s = rawWeather.substring(start, i)
+            return s.toDoubleOrNull()
+        }
+*/
+
+
