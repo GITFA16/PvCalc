@@ -1,0 +1,70 @@
+
+/************
+Hinweis zur Verwendung der nachfolgenden Codebeispiele
+Die in den folgenden Dokumentabschnitten dargestellten Codefunktionen dienen ausschliesslich der konzeptionellen Veranschaulichung und Dokumentation des Lösungsansatzes.
+Sie sind ausdrücklich nicht zur direkten Übernahme, zum Kopieren oder als Ersatz bestehender Implementierungen vorgesehen.
+Vor einer produktiven Nutzung oder Integration in andere Projekte ist eine eigenständige Analyse, Anpassung sowie Funktions- und Integrationsprüfung erforderlich. Eine unreflektierte Verwendung der Beispiele kann zu Fehlfunktionen oder inkonsistentem Systemverhalten führen.
+*************/
+
+
+
+//Data Key: Account Specific: (Daniel Meyer) "937bd0a5e1d6dfe38866bc7014b69d9e"
+
+//Beispiel API Request:
+
+//https://api.openweathermap.org/data/2.5/weather?lat=47.4891&lon=8.145&exclude=minutely,hourly,daily&appid=937bd0a5e1d6dfe38866bc7014b69d9e
+
+//Response Data:
+
+{
+  "coord": {
+    "lon": 8.2112,
+    "lat": 47.4864
+  },
+  "weather": [
+    {
+      "id": 501,
+      "main": "Rain",
+      "description": "moderate rain",
+      "icon": "10d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 276.28,
+    "feels_like": 276.28,
+    "temp_min": 275.51,
+    "temp_max": 277.9,
+    "pressure": 1017,
+    "humidity": 97,
+    "sea_level": 1017,
+    "grnd_level": 963
+  },
+  "visibility": 26,
+  "wind": {
+    "speed": 0.15,
+    "deg": 67,
+    "gust": 0.28
+  },
+  "rain": {
+    "1h": 1.33
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1764159594,
+  "sys": {
+    "type": 2,
+    "id": 2005389,
+    "country": "CH",
+    "sunrise": 1764139664,
+    "sunset": 1764171696
+  },
+  "timezone": 3600,
+  "id": 7285348,
+  "name": "Brugg",
+  "cod": 200
+}
+
+
+

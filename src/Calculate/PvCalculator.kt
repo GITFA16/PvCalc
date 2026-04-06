@@ -1,21 +1,16 @@
 package Calculate
 
-
 import Data.API.ApiInterface
 import Data.CatalogInterface
 import Data.PVOutDC
 import Data.PvOutputsDC
 import Userinterface.UserInputDC
 import kotlin.math.cos
-import kotlin.math.pow
-
-
 
 class PvCalculator(
     val apiInterface: ApiInterface,
     val pvCatalog: CatalogInterface
 ) : CalcInterface {
-
 
     override fun calculation(
         ui: UserInputDC,
@@ -26,22 +21,20 @@ class PvCalculator(
 
         val apiOutputs = if (ui.useApi) {
             apiInterface.apiCollect(ui)
-
         } else {
             // Werte aus GUI (ui.*)
-            val cloud = ui.cloudCoverPercent ?: 0.0
             val ghi = ui.ghiClear ?: 0.0
-            val dni = ui.dniReal ?: 0.0
             val dhi = ui.dhiReal ?: 0.0
             val tAir = ui.tAir ?: 0.0
             val wind = ui.velocity ?: 0.0
+            val dhiClamped = dhi.coerceIn(0.0, ghi)
+            val dni = (ghi - dhiClamped).coerceAtLeast(0.0)
 
-            // ApiOutputDC wiederverwenden
-            //in Package Data
+            // ApiOutputDC wiederverwenden (cloudCover wird nicht mehr genutzt)
             Data.ApiOutputDC(
-                cloudCoverPercent = cloud,
+                cloudCoverPercent = 0.0,
                 ghiClear = ghi,
-                dniReal = dni,
+                dniReal = dni,     // wird im Manual-Mode aus GHI/DHI abgeleitet
                 dhiReal = dhi,
                 tAir = tAir,
                 velocity = wind,
@@ -49,17 +42,37 @@ class PvCalculator(
             )
         }
 
-        val c = apiOutputs.cloudCoverPercent / 100.0
-        val cmf = 1.0 - 0.75 * c.pow(3.4)
+        // Kein Cloud-Faktor mehr
+        val cmf = 1.0
 
-        //Benutzerwerte
+        // Benutzerwerte
         val ghiClear = apiOutputs.ghiClear
-        val dniReal = apiOutputs.dniReal
-        val dhiReal = apiOutputs.dhiReal
-        val sum = dniReal + dhiReal
 
-        // GHI_eff
-        if (ghiClear <= 0.0 || sum <= 0.0) {
+        // Manual-Mode: User gibt GHI + DHI ein, BHI (= direkter horizontaler Anteil) = GHI - DHI
+        val dniReal: Double   // hier als BHI zu verstehen
+        val dhiReal: Double
+
+        if (!ui.useApi) {
+            val dhiInput = apiOutputs.dhiReal
+
+            // DHI darf nicht negativ sein und nicht größer als GHI
+            val dhiClamped = dhiInput.coerceIn(0.0, ghiClear)
+
+            // Direkter horizontaler Anteil aus Bilanz
+            val bhiAuto = (ghiClear - dhiClamped).coerceAtLeast(0.0)
+
+            dhiReal = dhiClamped
+            dniReal = bhiAuto
+        } else {
+            // API-Mode: nutze Werte wie geliefert
+            dniReal = apiOutputs.dniReal
+            dhiReal = apiOutputs.dhiReal
+        }
+
+        // effektive Werte (cmf=1)
+        val ghiEff = ghiClear * cmf
+
+        if (ghiEff <= 0.0) {
             return PVOutDC(
                 apiOut = apiOutputs,
                 pvOut = PvOutputsDC(
@@ -76,32 +89,26 @@ class PvCalculator(
                 )
             )
         }
-        val scale = ghiClear / sum
-
-        // normierte Strahlung (klarer Himmel)
-        val dniNorm = dniReal * scale
-        val dhiNorm = dhiReal * scale
-
-        // effektive Werte mit Bewölkung
-        val ghiEff = ghiClear * cmf
-        val dniEff = dniNorm * cmf
-        val dhiEff = dhiNorm * cmf
 
         // Anteile (für Output / Debug)
-        val fdir = dniNorm / ghiClear
-        val fdif = dhiNorm / ghiClear
+        val fdir = if (ghiClear > 0.0) dniReal / ghiClear else 0.0
+        val fdif = if (ghiClear > 0.0) dhiReal / ghiClear else 0.0
 
-        // G_beta
+        // Bei cmf=1 sind die effektiven Werte identisch zu den "realen"
+        val dniEff = dniReal * cmf
+        val dhiEff = dhiReal * cmf
+
+        // G_beta (gleiches vereinfachtes Modell wie bei dir)
         val betaRad = Math.toRadians(ui.beta)
-        val gBeta = dhiEff + dniEff * cos(betaRad)
+
+        val cosB = cos(betaRad)
+        val skyFactor = (1.0 + cosB) / 2.0
+
+        val gBeta = dniEff * cosB + dhiEff * skyFactor
 
         // T_cell
         val tCell0 = apiOutputs.tAir + gBeta / 800.0 * (modul.noct - 20.0)
-        val tCell = if (apiOutputs.velocity != null) {
-            tCell0 - 0.05 * apiOutputs.velocity
-        } else {
-            tCell0
-        }
+        val tCell = tCell0 - 0.05 * apiOutputs.velocity
 
         // Temperaturabhängiger Wirkungsgrad
         val eta = modul.etaRef * (1.0 + modul.gamma * (tCell - 25.0))
@@ -110,7 +117,6 @@ class PvCalculator(
         val rawLeistung = gBeta * ui.flaeche * eta
         val leistung = if (rawLeistung > 0.0) rawLeistung else null
 
-        // alles in API.PvOutputs zurück informieren
         return PVOutDC(
             apiOut = apiOutputs,
             pvOut = PvOutputsDC(
