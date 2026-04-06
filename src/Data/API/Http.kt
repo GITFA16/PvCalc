@@ -6,39 +6,40 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 
+class Http(
+    var apiUrl: String
+) {
 
-class Http (var apiUrl : String) {
+    var response = HttpDC("", 0)
 
-    var response = HttpDC("",0)
-
-
-    fun get ()  {
-
-        var url : URL = URI.create(apiUrl).toURL()
-        var connection : HttpURLConnection = url.openConnection() as HttpURLConnection
-
+    fun get() {
+        val url: URL = URI.create(apiUrl).toURL()
+        val connection: HttpURLConnection =
+            url.openConnection() as HttpURLConnection
 
         try {
-
-            //Request method: GET
+            // Request method: GET
             connection.requestMethod = "GET"
 
             // Response code
             response.code = connection.responseCode
-            println("Response Code: $response.code")
+            println("Response Code: ${response.code}")
 
             if (response.code == HttpURLConnection.HTTP_OK) {
-                // Read and print the response data
-                val reader: BufferedReader = BufferedReader(InputStreamReader(connection.inputStream))
-                var line: String?
+                // Read and collect the response data
+                val reader = BufferedReader(
+                    InputStreamReader(connection.inputStream)
+                )
+
                 val responseBuilder = StringBuilder()
+                var line: String?
 
                 while (reader.readLine().also { line = it } != null) {
                     responseBuilder.append(line)
                 }
+
                 reader.close()
                 response.data = responseBuilder.toString()
-
             } else {
                 response.data = "Error: Unable to fetch data from the API"
             }
@@ -48,7 +49,5 @@ class Http (var apiUrl : String) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-
     }
-
 }

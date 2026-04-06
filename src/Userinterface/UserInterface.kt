@@ -1,227 +1,200 @@
 package Userinterface
 
-import Data.API.ApiCollect
-import Data.PvBase
-import Data.PvCatalog
+import Calculate.CalcInterface
 import Calculate.PvCalculator
+import Data.API.ApiCollect
+import Data.API.ApiInterface
+import Data.CatalogInterface
+import Data.PvCatalog
+import UserInput
 import javafx.application.Application
 import javafx.application.Platform
+import javafx.geometry.Insets
 import javafx.scene.Scene
 import javafx.scene.control.Button
-import javafx.scene.control.ComboBox
 import javafx.scene.control.Label
 import javafx.scene.control.TextArea
-import javafx.scene.control.TextField
 import javafx.scene.layout.VBox
+import javafx.scene.paint.Color
 import javafx.stage.Stage
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 class UserInterface : Application() {
 
+    val pvCatalog: CatalogInterface = PvCatalog
+    val apiCollect: ApiInterface = ApiCollect()
+    val calc: CalcInterface = PvCalculator(apiCollect, pvCatalog)
 
-    // API Key unsichtbar im UI (Benutzer sieht kein Feld dafür)
+    val moduleNames = pvCatalog.getModuleNames()
+
+    private val userInput = UserInput(moduleNames)
+    private val button = Button("Berechnen")
+    private val errorLabel = Label().apply { textFill = Color.RED }
+    private val output = TextArea().apply { isEditable = false }
+
     private val API_KEY = "937bd0a5e1d6dfe38866bc7014b69d9e"
 
-    // --- UI Elemente ---TextField : Inputs
-    private val tfZip = TextField("")
-    private val tfBeta = TextField("")
-    private val tfFlaeche = TextField("")
-
-    private val cbModul = ComboBox<String>() //Kotak Pilihan Doprdown; Privat untuk Gui Class
-    private val button = Button("Berechnen") //Tombol
-    private val titleLabel = Label("PV Leistungsabschätzung")
-
-    // Rückmeldung bei falschen Eingaben
-    private val errorLabel = Label("").apply {
-        style = "-fx-text-fill: red;" //text yang di apply berwarna merah
-    }
-
-    private val output = TextArea().apply {
-        isEditable = false  //tidak bisa diubah - read Only
-        prefRowCount = 14 // 14 baris text - lebih dari itu scroll kebawah
-        isWrapText = true //teks otomatis pindah baris
-    }
-
-    private val box = VBox(10.0) // von oben nach unten / Vertikal - Jarak 10 pixel
-
-    override fun start(stage: Stage) { //frame aplikasi
-
-
-
-
-//        membuat layout (VBox, HBox, dll)
-//        membuat komponen (Button, Label, TextField)
-//        membuat Scene
-//        memasang Scene ke Stage
-//        menampilkan window (show())
-        //stage Rumah . Start Ruangan
-
-        cbModul.items.addAll(
-            "Trina Vertex S 400",
-            "JA Solar JAM72S10 400",
-            "LONGi Hi-MO 5m 410"
-        )
-
-//        cbModul.setCellFactory {
-//            object : ListCell<API.PvBase>() {
-//                override fun updateItem(item: API.PvBase?, empty: Boolean) {
-//                    super.updateItem(item, empty)
-//                    text = if (empty || item == null) "" else item.name
-//                }
-//            }
-//        }
-//        cbModul.buttonCell = object : ListCell<API.PvBase>() {
-//            override fun updateItem(item: API.PvBase?, empty: Boolean) {
-//                super.updateItem(item, empty)
-//                text = if (empty || item == null) "" else item.name
-//            }
-//        }
-
-
-        cbModul.selectionModel.selectFirst() //Pilihan pertama sebagai default // Erste Wahl als default :-)
-
-        box.children.addAll(
-            titleLabel,
-
-            Label("PLZ (4 Ziffern)"),
-            tfZip,
-
-            Label("Dachneigung β (0..90°)"),
-            tfBeta,
-
-            Label("Fläche (m²)"),
-            tfFlaeche,
-
-            Label("PV Modul"),
-            cbModul,
-
-            errorLabel,
-            button,
-            output
-        )
-
-        button.setOnAction { makeCalc() } //klick button  - Fungsi Berechnen soll starten
-
-        with(stage) {  //stage rumahnya
-            scene = Scene(box, 520.0, 650.0)  //ukurannya
-            title = "PV Rechner" //judul
-            isResizable = false
-            setOnCloseRequest { exit() }
-            show()
+    override fun start(stage: Stage) {
+        val root = VBox(10.0, userInput, errorLabel, button, output).apply {
+            padding = Insets(15.0)
         }
+
+        button.setOnAction { calculate() }
+
+        stage.scene = Scene(root, 700.0, 800.0)
+        stage.title = "PV Rechner"
+        stage.show()
     }
 
-
-
-
-
-
-
-
-
-    private fun makeCalc() {
-
-        // alte Meldungen löschen
+    private fun calculate() {
         errorLabel.text = ""
         output.text = ""
 
+        // ZIP prüfen; Modus API oder manuell
+        val useApi = userInput.rbApi.isSelected
+        val zipText = userInput.tfZip.text.trim()
 
-
-        // PLZ prüfen (String -> Int)
-        val zipText = tfZip.text.trim() //trim hapus spasi depan blakang
-        if (!zipText.matches(Regex("\\d{4}"))) {
+        if (useApi && !zipText.matches(Regex("\\d{4}"))) {
             errorLabel.text = "PLZ muss aus genau 4 Ziffern bestehen (z.B. 5610)."
             return
         }
-        val zip = zipText.toInt()
 
-        // Dachneigung prüfen (String -> Double)
-        val betaText = tfBeta.text.trim()
-        val beta = betaText.toDoubleOrNull()
-        if (beta == null) { //kein wert und nicht gleich wie "0"
-            errorLabel.text = "Dachneigung muss eine Zahl sein (z.B. 30)."
-            return
-        }
-        if (beta !in 0.0..90.0) {
-            errorLabel.text = "Dachneigung muss zwischen 0° und 90° liegen."
+        val zip = if (useApi) zipText.toInt() else 0
+
+        // --- Beta / Fläche ---
+        val beta = userInput.tfBeta.text.trim().toDoubleOrNull()
+        if (beta == null || beta !in 0.0..90.0) {
+            errorLabel.text = "Dachneigung muss zwischen 0° und 90° liegen (z.B. 30)."
             return
         }
 
-        // --- Fläche prüfen (String -> Double) ---
-        val flaecheText = tfFlaeche.text.trim()
-        val flaeche = flaecheText.toDoubleOrNull()
-        if (flaeche == null) {
-            errorLabel.text = "Fläche muss eine Zahl sein (z.B. 10)."
-            return
-        }
-        if (flaeche <= 0.0) {
-            errorLabel.text = "Fläche muss größer als 0 sein."
+        val area = userInput.tfFlaeche.text.trim().toDoubleOrNull()
+        if (area == null || area <= 0.0) {
+            errorLabel.text = "Fläche muss größer als 0 sein (z.B. 10)."
             return
         }
 
-        // --- Modul auswählen ---
-//        val modul = when (cbModul.selectionModel.selectedIndex) {
-//            0 -> API.PvCatalog.Trina_Vertex_S_400
-//            1 -> API.PvCatalog.JaSolar_400
-//            2 -> API.PvCatalog.longi_410
-//            else -> API.PvCatalog.Trina_Vertex_S_400
-//        }
+        val modulName: String = userInput.cbModul.value
 
-        val modul: PvBase = when (cbModul.value) {
-            "Trina Vertex S 400" -> PvCatalog.Trina_Vertex_S_400
-            "JA Solar JAM72S10 400" -> PvCatalog.JaSolar_400
-            "LONGi Hi-MO 5m 410" -> PvCatalog.longi_410
-            else -> PvCatalog.Trina_Vertex_S_400
-        }
-
-        // --- Inputs bauen ---
-        val ui = UserInputDC(
-            zip = zip,
-            appId = API_KEY, //privat siehe oben
-            beta = beta,
-            flaeche = flaeche,
-            pvModul = cbModul.selectionModel.selectedIndex
-        )
-
-        // UI sperren + Status
-        button.isDisable = true  //user  tidak bisa klick berkali2 saat proses berjalan
+        button.isDisable = true
         output.text = "Berechnung läuft ..."
 
-        // Hintergrund-Thread, damit UI nicht einfriert
-//        | Thread biasa                 | Daemon thread          |
-//        | Menahan aplikasi tetap hidup | Tidak menahan aplikasi |
-//        | Harus selesai dulu           | Bisa diputus otomatis  |
+        val ui = UserInputDC(
+            useApi = useApi,
+            zip = zip,
+            appId = API_KEY,
+            beta = beta,
+            flaeche = area,
+            pvModul = userInput.cbModul.selectionModel.selectedIndex
+        )
+
+//        // 1) Cloud Cover (%)
+//        val cloud = when (userInput.cbCloud.value) {
+//            "0%  komplett klar"-> 0.0 "xy "
+//            "10% fast klar"-> 10.0
+//            "30% leicht bewölkt"-> 30.0
+//            "50% halb bewölkt"-> 50.0
+//            "70% stark bewölkt"-> 70.0
+//            "90% sehr stark bewölkt"-> 90.0
+//            "100% bedeckt"-> 100.0
+//            else -> 50.0
+//        }
+//
+//        // 2) GHI_clear (W/m²)
+//        val ghi = when (userInput.cbGhi.value) {
+//            "Winter (100–300)" -> 200.0
+//            "Frühling/Herbst (400–700)" -> 550.0
+//            "Sommer Mittag (800–1000)" -> 900.0
+//            "Sommer Maximum (1050–1100)" -> 1075.0
+//            else -> 850.0
+//        }
+//
+//        // 3) DNI_real (W/m²)
+//        val dni = when (userInput.cbDni.value) {
+//            "Sommer klar (700–900)" -> 800.0
+//            "Leicht bewölkt (200–600)" -> 400.0
+//            "Stark bewölkt (0–100)" -> 50.0
+//            "Winter klar (300–600)" -> 450.0
+//            else -> 350.0
+//        }
+//
+//        // 4) DHI_real (W/m²)
+//        val dhi = when (userInput.cbDhi.value) {
+//            "Klarer Himmel (50–150)" -> 100.0
+//            "Leicht bewölkt (150–350)" -> 250.0
+//            "Stark bewölkt (100–300)" -> 200.0
+//            "Nebel/Bedeckt (50–250)" -> 150.0
+//            else -> 250.0
+//        }
+//
+//        // 5) Lufttemperatur (°C)
+//        val tAir = when (userInput.cbTAir.value) {
+//            "Winter (-10 bis +10) " -> 0.0
+//            "Übergang (0 bis 20)" -> 10.0
+//            "Sommer (15 bis 35)" -> 25.0
+//            else -> 15.0
+//        }
+//
+//        // 6) Windgeschwindigkeit (m/s)
+//        val wind = when (userInput.cbWind.value) {
+//            "ruhig (0–2)" -> 1.0
+//            "leicht (2–5)" -> 3.5
+//            "windig (5–10)" -> 7.5
+//            "stark (10–20)" -> 15.0
+//            else -> 5.0
+//        }
+
+        val cloud = userInput.cbCloud.value ?: 50.0
+        val ghi   = userInput.cbGhi.value   ?: 550.0
+        val dni   = userInput.cbDni.value   ?: 400.0
+        val dhi   = userInput.cbDhi.value   ?: 250.0
+        val tAir  = userInput.cbTAir.value  ?: 10.0
+        val wind  = userInput.cbWind.value  ?: 3.5
+
+        // Werte ins UserInputDC schreiben (nur manuell)
+        if (!useApi) {
+            ui.cloudCoverPercent = cloud
+            ui.ghiClear = ghi
+            ui.dniReal = dni
+            ui.dhiReal = dhi
+            ui.tAir = tAir
+            ui.velocity = wind
+        }
 
         thread(isDaemon = true) {
             try {
-                val apiCollect = ApiCollect()
-                val calc = PvCalculator(apiCollect)
-                val PVOutData = calc.calculation(ui, modul)
+                val pvOutData = calc.calculation(ui, modulName)
 
+                Platform.runLater {
+                    val mode = if (ui.useApi) "API" else "Manuell"
 
+                    val powerText = pvOutData.pvOut.power?.let {
+                        "%.10f".format(it)
+                    } ?: "0.000"
 
-                Platform.runLater { // führt Code im JavaFX-UI-Thread aus und die Warteschlange des UI-Threads gelegt
-                    val leistungText =
-                        PVOutData.pvOut.power?.let { "%.3f".format(it) } ?: "0.000"
+                    val code = pvOutData.apiOut.apiHttpResponse
+                    val apiInfo = when (code) {
+                        200 -> "API-Aufruf gültig"
+                        404 -> "API-Aufruf nicht gültig: Daten konnten nicht abgeholt werden"
+                        0 -> ""
+                        else -> "Response $code: API-Abholung nicht erfolgreich"
+                    }
 
                     output.text = """
-                        Ergebnis
-                        Leistung: $leistungText W
+                        Mode: $mode. $apiInfo
+                        Modul: $modulName
+                        Leistung: $powerText W
                         
-                        🌦️ API-Werte (aktuelle Stunde)
-                        Cloud Cover: ${"%.1f".format(PVOutData.apiOut.cloudCoverPercent)} %
-                        GHI: ${"%.3f".format(PVOutData.apiOut.ghiClear)} W/m²
-                        DNI: ${"%.3f".format(PVOutData.apiOut.dniReal)} W/m²
-                        DHI: ${"%.3f".format(PVOutData.apiOut.dhiReal)} W/m²
-                        T_air: ${"%.2f".format(PVOutData.apiOut.tAir)} °C
-                        Wind: ${"%.2f".format(PVOutData.apiOut.velocity)} m/s
-                        
-                        Responsecode: ${PVOutData.apiOut.apiHttpResponse} 
-                        Modul: ${modul.name}
-                    """.trimIndent() //merapikan kalau lebih dari 1 baris
+                        Cloud Cover: ${"%.1f".format(pvOutData.apiOut.cloudCoverPercent)} %
+                        GHI: ${"%.3f".format(pvOutData.apiOut.ghiClear)} W/m²
+                        DNI: ${"%.3f".format(pvOutData.apiOut.dniReal)} W/m²
+                        DHI: ${"%.3f".format(pvOutData.apiOut.dhiReal)} W/m²
+                        T_air: ${"%.2f".format(pvOutData.apiOut.tAir)} °C
+                        Wind: ${"%.2f".format(pvOutData.apiOut.velocity)} m/s
+                    """.trimIndent()
 
-                    button.isDisable = false //setelah proses selesai bisa di klik kembali
+                    button.isDisable = false
                 }
             } catch (e: Exception) {
                 Platform.runLater {
@@ -233,7 +206,5 @@ class UserInterface : Application() {
         }
     }
 
-    fun exit() {  // setOnCloseRequest { exit() } --> Saubere Outcome
-        exitProcess(0)
-    }
+    override fun stop() = exitProcess(0)
 }
